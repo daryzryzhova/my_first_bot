@@ -1,30 +1,28 @@
 import os
-import google.generativeai as genai
+import requests
 from vkbottle.bot import Bot, Message
 
 # --- ПОЛУЧАЕМ ПЕРЕМЕННЫЕ ИЗ ОКРУЖЕНИЯ (BotHost) ---
 VK_TOKEN = os.getenv("VK_TOKEN")
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+YANDEX_API_KEY = os.getenv("YANDEX_API_KEY")
+YANDEX_FOLDER_ID = os.getenv("YANDEX_FOLDER_ID")
 OWNER_ID = os.getenv("OWNER_ID")
 
 # Проверяем, что все переменные заданы
 if not VK_TOKEN:
     print("❌ Ошибка: не задан VK_TOKEN")
     exit(1)
-if not GEMINI_API_KEY:
-    print("❌ Ошибка: не задан GEMINI_API_KEY")
+if not YANDEX_API_KEY:
+    print("❌ Ошибка: не задан YANDEX_API_KEY")
+    exit(1)
+if not YANDEX_FOLDER_ID:
+    print("❌ Ошибка: не задан YANDEX_FOLDER_ID")
     exit(1)
 if not OWNER_ID:
     print("❌ Ошибка: не задан OWNER_ID")
     exit(1)
 
 OWNER_ID = int(OWNER_ID)
-
-# --- НАСТРАИВАЕМ GEMINI ---
-print("⏳ Подключаюсь к Gemini...")
-genai.configure(api_key=GEMINI_API_KEY)
-model = genai.GenerativeModel("gemini-1.5-flash")
-print("✅ Gemini готов")
 
 # --- СОЗДАЁМ БОТА ---
 bot = Bot(VK_TOKEN)
@@ -51,6 +49,30 @@ SYSTEM_PROMPT = """
 Ты — лицо компании, будь профессионален!
 """
 
+# --- ФУНКЦИЯ ДЛЯ ЗАПРОСА К YANDEXGPT ---
+def ask_yandex_gpt(user_text):
+    url = "https://llm.api.cloud.yandex.net/foundationModels/v1/completion"
+    headers = {
+        "Authorization": f"Api-Key {YANDEX_API_KEY}",
+        "Content-Type": "application/json"
+    }
+    data = {
+        "modelUri": f"gpt://{YANDEX_FOLDER_ID}/yandexgpt/latest",
+        "completionOptions": {
+            "stream": False,
+            "temperature": 0.6,
+            "maxTokens": 2000
+        },
+        "messages": [
+            {"role": "system", "text": SYSTEM_PROMPT},
+            {"role": "user", "text": user_text}
+        ]
+    }
+    response = requests.post(url, headers=headers, json=data)
+    response.raise_for_status()
+    result = response.json()
+    return result["result"]["alternatives"][0]["message"]["text"]
+
 # --- ФУНКЦИЯ ДЛЯ ОТПРАВКИ УВЕДОМЛЕНИЯ ВЛАДЕЛЬЦУ ---
 async def notify_owner(order_text: str):
     try:
@@ -71,18 +93,13 @@ async def handle_message(message: Message):
     print(f"📩 Получено сообщение от {user_id}: {user_text}")
 
     try:
-        # Формируем запрос к Gemini
-        full_prompt = f"{SYSTEM_PROMPT}\n\nСообщение пользователя: {user_text}\n\nТвой ответ:"
-        print("⏳ Отправляю запрос в Gemini...")
-        response = model.generate_content(full_prompt)
-        ai_answer = response.text
-        print("✅ Получен ответ от Gemini")
+        print("⏳ Отправляю запрос в YandexGPT...")
+        ai_answer = ask_yandex_gpt(user_text)
+        print("✅ Получен ответ от YandexGPT")
 
-        # Отправляем ответ пользователю
         await message.answer(ai_answer)
         print("✅ Ответ отправлен пользователю")
 
-        # Проверяем, не заказ ли это
         if "заказ принят" in ai_answer.lower() or "передам менеджеру" in ai_answer.lower():
             await notify_owner(
                 f"Клиент: vk.com/id{user_id}\n"
