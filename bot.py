@@ -85,11 +85,11 @@ def ask_yandex_gpt(user_text):
             response_data = response.read().decode('utf-8')
             result = json.loads(response_data)
             return result["result"]["alternatives"][0]["message"]["text"]
-    except urllib.error.HTTPError as e:
-        print(f"HTTP ошибка: {e.code} - {e.reason}")
+    except urllib.error.URLError as e:
+        print(f"❌ Ошибка сети: {e}")
         raise
     except Exception as e:
-        print(f"Ошибка при запросе к YandexGPT: {e}")
+        print(f"❌ Ошибка при запросе к YandexGPT: {e}")
         raise
 
 # --- ФУНКЦИЯ ДЛЯ ОТПРАВКИ УВЕДОМЛЕНИЯ ВЛАДЕЛЬЦУ ---
