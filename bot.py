@@ -1,5 +1,7 @@
 import os
-import requests
+import json
+import urllib.request
+import urllib.error
 from vkbottle.bot import Bot, Message
 
 # --- ПОЛУЧАЕМ ПЕРЕМЕННЫЕ ИЗ ОКРУЖЕНИЯ (BotHost) ---
@@ -49,13 +51,10 @@ SYSTEM_PROMPT = """
 Ты — лицо компании, будь профессионален!
 """
 
-# --- ФУНКЦИЯ ДЛЯ ЗАПРОСА К YANDEXGPT ---
+# --- ФУНКЦИЯ ДЛЯ ЗАПРОСА К YANDEXGPT (через urllib) ---
 def ask_yandex_gpt(user_text):
     url = "https://llm.api.cloud.yandex.net/foundationModels/v1/completion"
-    headers = {
-        "Authorization": f"Api-Key {YANDEX_API_KEY}",
-        "Content-Type": "application/json"
-    }
+    
     data = {
         "modelUri": f"gpt://{YANDEX_FOLDER_ID}/yandexgpt/latest",
         "completionOptions": {
@@ -68,10 +67,30 @@ def ask_yandex_gpt(user_text):
             {"role": "user", "text": user_text}
         ]
     }
-    response = requests.post(url, headers=headers, json=data)
-    response.raise_for_status()
-    result = response.json()
-    return result["result"]["alternatives"][0]["message"]["text"]
+    
+    json_data = json.dumps(data).encode('utf-8')
+    
+    req = urllib.request.Request(
+        url,
+        data=json_data,
+        headers={
+            "Authorization": f"Api-Key {YANDEX_API_KEY}",
+            "Content-Type": "application/json"
+        },
+        method="POST"
+    )
+    
+    try:
+        with urllib.request.urlopen(req) as response:
+            response_data = response.read().decode('utf-8')
+            result = json.loads(response_data)
+            return result["result"]["alternatives"][0]["message"]["text"]
+    except urllib.error.HTTPError as e:
+        print(f"HTTP ошибка: {e.code} - {e.reason}")
+        raise
+    except Exception as e:
+        print(f"Ошибка при запросе к YandexGPT: {e}")
+        raise
 
 # --- ФУНКЦИЯ ДЛЯ ОТПРАВКИ УВЕДОМЛЕНИЯ ВЛАДЕЛЬЦУ ---
 async def notify_owner(order_text: str):
