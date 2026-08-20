@@ -1,25 +1,25 @@
 import os
-import requests
+import asyncio
 import google.generativeai as genai
 from vkbottle.bot import Bot, Message
 
-# --- ПОЛУЧАЕМ ПЕРЕМЕННЫЕ ИЗ ОКРУЖЕНИЯ (BotHost) ---
-VK_TOKEN = os.getenv("vk1.a.ui3T60loNchKtKizUdAzn6SeXNR0mndCHKxuCunGP59ZMbVn9mEEmwjJNxONJL6sKarSertfMZGaIj7rqS1uxK90AcHIWmh6npeBtIqBwQYm7KeE0WbLtLuZEmB9ixLxUfPfW1CSx1hTwP8abjgiAia3M6XJ3uX6KbZKaCLLVDF0c1Dzf381p1VXycf8imQbFYRkoYTMvMGC_Tlshw_lsw")
+# --- Получаем переменные окружения ---
+VK_TOKEN = os.getenv("VK_TOKEN")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-OWNER_ID = int(os.getenv("362359566", 0))  # если не задано, будет 0
+OWNER_ID = int(os.getenv("OWNER_ID", 0))
 
 if not VK_TOKEN or not GEMINI_API_KEY or not OWNER_ID:
     print("Ошибка: не заданы все переменные окружения!")
     exit(1)
 
-# --- НАСТРАИВАЕМ GEMINI ---
+# --- Настройка Gemini ---
 genai.configure(api_key=GEMINI_API_KEY)
-model = genai.GenerativeModel("gemini-1.5-flash")  # можно заменить на gemini-1.5-pro
+model = genai.GenerativeModel("gemini-1.5-flash")  # Быстрая модель
 
-# --- СОЗДАЁМ БОТА ---
+# --- Создаём бота ---
 bot = Bot(VK_TOKEN)
 
-# --- СИСТЕМНЫЙ ПРОМПТ (инструкция для ИИ) ---
+# --- Системный промпт ---
 SYSTEM_PROMPT = """
 Ты — умный помощник-консультант в сообществе ВКонтакте. 
 Твоя задача — общаться с клиентами вежливо, дружелюбно и помогать им с заказами.
@@ -42,9 +42,8 @@ SYSTEM_PROMPT = """
 Ты — лицо компании, будь профессионален!
 """
 
-# --- ФУНКЦИЯ ДЛЯ ОТПРАВКИ УВЕДОМЛЕНИЯ ВЛАДЕЛЬЦУ ---
+# --- Функция для уведомления владельца ---
 async def notify_owner(order_text: str):
-    """Отправляет сжатый отчёт о заказе владельцу группы."""
     message_text = f"🔔 НОВЫЙ ЗАКАЗ!\n\n{order_text}"
     await bot.api.messages.send(
         peer_id=OWNER_ID,
@@ -52,24 +51,20 @@ async def notify_owner(order_text: str):
         random_id=0
     )
 
-# --- ОБРАБОТЧИК СООБЩЕНИЙ ---
+# --- Обработчик сообщений ---
 @bot.on.message()
 async def handle_message(message: Message):
     user_text = message.text
     user_id = message.from_id
 
-    # 1. Отправляем запрос в Gemini
     try:
         full_prompt = f"{SYSTEM_PROMPT}\n\nСообщение пользователя: {user_text}\n\nТвой ответ:"
         response = model.generate_content(full_prompt)
         ai_answer = response.text
 
-        # 2. Отправляем ответ пользователю
         await message.answer(ai_answer)
 
-        # 3. Проверяем, не заказ ли это
         if "заказ принят" in ai_answer.lower() or "передам менеджеру" in ai_answer.lower():
-            # Отправляем уведомление владельцу
             await notify_owner(
                 f"Клиент: vk.com/id{user_id}\n"
                 f"Сообщение: {user_text}\n"
@@ -77,9 +72,9 @@ async def handle_message(message: Message):
             )
 
     except Exception as e:
-        # Если Gemini не ответил — отправляем запасной ответ
         await message.answer("Извините, я сейчас перегружен. Попробуйте написать чуть позже.")
         print(f"Ошибка Gemini: {e}")
 
-# --- ЗАПУСК БОТА ---
-bot.run()
+# --- ЗАПУСК (используем run() а не run_forever) ---
+if __name__ == "__main__":
+    bot.run()
