@@ -2,6 +2,7 @@ import os
 import asyncio
 import google.generativeai as genai
 from vkbottle.bot import Bot, Message
+time.sleep(5)
 
 # --- Получаем переменные окружения ---
 VK_TOKEN = os.getenv("VK_TOKEN")
