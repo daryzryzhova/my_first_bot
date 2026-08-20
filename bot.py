@@ -78,4 +78,4 @@ async def handle_message(message: Message):
 
 # --- ЗАПУСК (используем run() а не run_forever) ---
 if __name__ == "__main__":
-    bot.run()
+    bot.run_polling()
