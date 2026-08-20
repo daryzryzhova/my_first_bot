@@ -1,5 +1,7 @@
 import os
 import google.generativeai as genai
+print("Gemini импортирован успешно")
+print("=== Бот запускается ===")
 from vkbottle.bot import Bot, Message
 
 # --- ПОЛУЧАЕМ ПЕРЕМЕННЫЕ ИЗ ОКРУЖЕНИЯ (BotHost) ---
@@ -72,4 +74,5 @@ async def handle_message(message: Message):
         await message.answer("Извините, я сейчас перегружен. Попробуйте позже.")
         print(f"Ошибка Gemini: {e}")
 
+print("=== Бот готов к работе ===")
 bot.run()
