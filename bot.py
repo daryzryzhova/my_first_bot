@@ -4,6 +4,10 @@ import urllib.request
 import urllib.error
 from vkbottle.bot import Bot, Message
 
+# --- ДАННЫЕ ДЛЯ ПОДКЛЮЧЕНИЯ К БИТРИКС24 ---
+BITRIX24_WEBHOOK_URL = "https://b24-4d8tl3.bitrix24.ru/rest/1/5ib9m7o5yr3vhei3/"
+# -------------------------------------------
+
 # --- ПОЛУЧАЕМ ПЕРЕМЕННЫЕ ИЗ ОКРУЖЕНИЯ (BotHost) ---
 VK_TOKEN = os.getenv("VK_TOKEN")
 YANDEX_API_KEY = os.getenv("YANDEX_API_KEY")
