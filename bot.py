@@ -96,6 +96,45 @@ def ask_yandex_gpt(user_text):
         print(f"❌ Ошибка при запросе к YandexGPT: {e}")
         raise
 
+# --- ФУНКЦИЯ ДЛЯ ОТПРАВКИ ЛИДА В БИТРИКС24 ---
+def send_lead_to_bitrix24(user_id, user_text, ai_answer):
+    """
+    Отправляет данные о клиенте в Битрикс24 через вебхук.
+    """
+    try:
+        # Формируем URL для метода crm.lead.add
+        url = BITRIX24_WEBHOOK_URL + "crm.lead.add"
+        
+        # Подготавливаем данные для лида (TITLE — обязательное поле)
+        data = {
+            "fields": {
+                "TITLE": f"Заявка от пользователя VK (id: {user_id})",
+                "COMMENTS": f"Сообщение: {user_text}\n\nОтвет бота: {ai_answer}",
+                "SOURCE_ID": "WEB",
+                "SOURCE_DESCRIPTION": "ВКонтакте"
+            }
+        }
+        
+        # Отправляем POST-запрос
+        json_data = json.dumps(data).encode('utf-8')
+        req = urllib.request.Request(
+            url,
+            data=json_data,
+            headers={"Content-Type": "application/json"},
+            method="POST"
+        )
+        
+        with urllib.request.urlopen(req) as response:
+            response_data = response.read().decode('utf-8')
+            result = json.loads(response_data)
+            if result.get("result"):
+                print(f"✅ Лид создан в Битрикс24! ID: {result['result']}")
+            else:
+                print(f"⚠️ Ошибка создания лида: {result}")
+                
+    except Exception as e:
+        print(f"❌ Ошибка при отправке в Битрикс24: {e}")
+
 # --- ФУНКЦИЯ ДЛЯ ОТПРАВКИ УВЕДОМЛЕНИЯ ВЛАДЕЛЬЦУ ---
 async def notify_owner(order_text: str):
     try:
@@ -129,7 +168,9 @@ async def handle_message(message: Message):
                 f"Сообщение: {user_text}\n"
                 f"Ответ бота: {ai_answer}"
             )
-
+            # Отправляем лида в Битрикс24
+            send_lead_to_bitrix24(user_id, user_text, ai_answer)
+    
     except Exception as e:
         error_msg = f"❌ Ошибка при обработке: {e}"
         print(error_msg)
